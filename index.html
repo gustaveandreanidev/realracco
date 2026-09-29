@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Realistic Racco — shooter plateformer 2 à 4 joueurs</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Le canvas occupe toute la fenêtre ; les écrans se superposent. -->
+<canvas id="cv"></canvas>
+
+<div id="app">
+
+  <!-- ============ ACCUEIL ============ -->
+  <section id="screen-menu" class="screen">
+    <div class="panel">
+      <h1>REALISTIC <span>RACCO</span></h1>
+      <p class="tagline">Shooter plateformer entre potes, 2 à 4 joueurs, connexion directe, aucun serveur à héberger.</p>
+
+      <label class="field">
+        <span>Pseudo</span>
+        <input id="input-name" maxlength="12" placeholder="Ton pseudo" autocomplete="off" spellcheck="false">
+      </label>
+
+      <div class="modes">
+        <button id="btn-create" class="big">Créer une partie</button>
+        <div class="or"><span>ou</span></div>
+        <div class="joinrow">
+          <input id="input-code" maxlength="10" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code de la partie">
+          <button id="btn-join" class="big alt">Rejoindre</button>
+        </div>
+        <div class="rowbtn">
+          <button id="btn-surv" class="small">⚔ Survie : vagues de bots</button>
+          <button id="btn-solo" class="small">Entraînement contre des mannequins</button>
+        </div>
+      </div>
+
+      <div id="menu-status" class="status">Prêt.</div>
+
+      <div class="optrow">
+        <span>Qualité des effets</span>
+        <button class="small seg" data-quality="high">Haute</button>
+        <button class="small seg" data-quality="low">Basse</button>
+      </div>
+
+      <details class="howto">
+        <summary>Contrôles &amp; règles</summary>
+        <ul>
+          <li><b>Q / D</b> (AZERTY), <b>A / D</b> (QWERTY) ou les flèches : se déplacer</li>
+          <li><b>Z</b>, <b>W</b>, <b>Espace</b> ou <b>↑</b> : sauter (double saut)</li>
+          <li><b>Double appui rapide sur Q ou D</b> : dash sur le côté (recharge 0,9 s)</li>
+          <li><b>Clic droit</b> : glissade (les balles passent au-dessus) · en l'air : plongeon</li>
+          <li><b>S</b> ou <b>↓</b> : se laisser tomber d'une plateforme traversable</li>
+          <li><b>Souris</b> : viser à 360° · <b>clic gauche</b> : tirer (maintien pour la mitraillette)</li>
+          <li><b>&amp;</b> / <b>é</b> (ou 1 / 2) : arme 1 / arme 2 · <b>molette</b> : changer · <b>R</b> : recharger</li>
+          <li><b>F</b> : plein écran · <b>Échap</b> : menu</li>
+          <li>100 PV, premier à <b>10 kills</b>. Headshot ×1,5 (sniper : mort, couteaux : ×2).</li>
+          <li>Tomber dans le vide : le kill va au dernier joueur qui t'a touché dans les 5 s, sinon suicide (−1).</li>
+          <li>Tire à tes pieds au bazooka pour un <b>rocket jump</b> (la moitié des dégâts pour toi).</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ SALON ============ -->
+  <section id="screen-lobby" class="screen hidden">
+    <div class="panel wide">
+      <div class="lobbyhead">
+        <h2 id="lobby-title">Salon</h2>
+        <div id="room-box">
+          <div class="label">Code de la partie</div>
+          <div id="room-code" class="code">····</div>
+          <div class="rowbtn">
+            <button id="btn-copy-code" class="small">Copier le code</button>
+            <button id="btn-copy-link" class="small">Copier le lien</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="lobbygrid">
+        <div class="col">
+          <div class="label">Joueurs</div>
+          <div id="lobby-players"></div>
+          <div class="label">Carte <em id="map-hint"></em></div>
+          <div id="map-list"></div>
+          <div class="label">Type de partie</div>
+          <div id="gt-list"></div>
+          <div class="label">Modes <em id="mode-hint"></em></div>
+          <div id="mode-list"></div>
+        </div>
+        <div class="col">
+          <div class="label">Ton personnage</div>
+          <div class="charbox">
+            <canvas id="char-preview" width="300" height="300"></canvas>
+            <div class="charside">
+              <div id="outfit-list"></div>
+              <button id="btn-outfit-random" class="small">🎲 Tenue au hasard</button>
+            </div>
+          </div>
+          <div class="label">Tes 2 armes <em>(clique pour choisir, reclique pour inverser l'ordre)</em></div>
+          <div id="weapon-list"></div>
+        </div>
+      </div>
+
+      <div class="lobbyfoot">
+        <button id="btn-leave" class="small ghost">Quitter</button>
+        <div id="lobby-status" class="status"></div>
+        <button id="btn-ready" class="big alt">Prêt !</button>
+        <button id="btn-start" class="big" disabled>En attente…</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ JEU ============ -->
+  <section id="screen-game" class="screen hidden">
+    <button id="btn-fs2" class="fsbtn" title="Plein écran (F)">⛶</button>
+
+    <div id="overlay" class="hidden">
+      <div class="obox">
+        <h2 id="ov-title">—</h2>
+        <p id="ov-sub"></p>
+        <table id="ov-table"></table>
+        <div class="rowbtn">
+          <button id="btn-rematch" class="big">Rejouer</button>
+          <button id="btn-tolobby" class="big alt">Retour au salon</button>
+          <button id="btn-quit" class="small ghost">Quitter</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pause" class="hidden">
+      <div class="obox small">
+        <h2>Menu</h2>
+        <p>La partie continue pendant que ce menu est ouvert.</p>
+        <div class="optrow">
+          <span>Qualité des effets</span>
+          <button class="small seg" data-quality="high">Haute</button>
+          <button class="small seg" data-quality="low">Basse</button>
+        </div>
+        <div class="rowbtn col">
+          <button id="btn-resume" class="big">Reprendre</button>
+          <button id="btn-fs" class="small">Plein écran (F)</button>
+          <button id="btn-pause-lobby" class="small">Retour au salon (tout le monde)</button>
+          <button id="btn-pause-quit" class="small ghost">Quitter la partie</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
